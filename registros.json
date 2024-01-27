@@ -1,0 +1,13 @@
+[
+    {
+        "id": 0,
+        "data": {
+            "completa": "2023-01-20",
+            "dia": 20,
+            "mes": 1,
+            "ano": 2023
+        },
+        "tipo": "receita",
+        "valor": 100.0
+    }
+]
