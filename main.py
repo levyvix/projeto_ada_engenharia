@@ -52,12 +52,17 @@ def agrupar_por_tipo(campo="tipo"):
     return table
 
 
-def agrupar_por_mes(campo="mes"):
+def agrupar_por_mes():
+    """Agrupa os registros por mês.
+
+    Returns:
+        table (PrettyTable): tabela com os registros agrupados por mês
+    """
     resultado = {}
 
     # receita, despesa, investimento e saldo por mes
     for registro in registros:
-        chave = registro["data"][campo]
+        chave = registro["data"]["mes"]
         if chave not in resultado:
             resultado[chave] = {
                 "receita": 0,
@@ -114,9 +119,9 @@ def obter_saldo():
     soma toas as receitas e subtrai todas as despesas, tambem soma o valor do montante dos investimentos
 
     Returns:
-        saldo: saldo total do sistema financeiro
+        saldo (float): saldo total do sistema financeiro
     """
-    # atualizar_rendimento()
+    atualizar_rendimento()
     saldo = 0
     for registro in registros:
         saldo += registro["valor"] + registro.get("montante", 0)
@@ -124,6 +129,14 @@ def obter_saldo():
 
 
 def atualizar_registro(id, novo_valor, novo_tipo, nova_data):
+    """Atualiza um registro do sistema financeiro usando um identificador único.
+
+    Args:
+        id (int): identificador único do registro
+        novo_valor (float): novo valor do registro
+        novo_tipo (str): novo tipo do registro
+        nova_data (datetime): nova data do registro
+    """
     for registro in registros:
         if registro["id"] == id:
             if novo_tipo != "":
@@ -139,16 +152,17 @@ def atualizar_registro(id, novo_valor, novo_tipo, nova_data):
 
 
 def exportar_relatorio():
+    """Exporta os registros do sistema financeiro para um arquivo JSON."""
     with open("registros.json", "w") as arquivo_json:
         json.dump(registros, arquivo_json, default=str, indent=4)
 
 
 def atualizar_rendimento():
+    """Atualiza o rendimento dos investimentos no sistema financeiro."""
     for registro in registros:
         if registro["tipo"] == "investimento":
             valor_investido = registro.get("valor", 0)
             taxa_juros = registro.get("taxa_juros", 0)
-            # tempo_dias = registro.get('tempo_dias', 0)
             date_format = "%Y-%m-%d"
             date_object = datetime.strptime(
                 registro["data"]["completa"], date_format
@@ -157,7 +171,14 @@ def atualizar_rendimento():
             registro["montante"] = valor_investido * (1 + taxa_juros) ** tempo_dias
 
 
-def criar_registro(tipo, valor, data):
+def criar_registro(tipo: str, valor: float, data: datetime):
+    """Cria um registro no sistema financeiro.
+
+    Args:
+        tipo (str): Tipo do registro (receita, despesa ou investimento)
+        valor (float): Valor do registro
+        data (datetime): Data do registro
+    """
     global contador_id
 
     if tipo == "investimento":
@@ -248,12 +269,18 @@ def criar_registro(tipo, valor, data):
 
 
 def deletar_registro(id_registro):
+    """Deleta um registro do sistema financeiro usando um identificador único.
+
+    Args:
+        id_registro (str): identificador único do registro
+
+    Raises:
+        TypeError: caso o id não seja um número inteiro
+    """
     try:
         id_registro = int(id_registro)  # Tenta converter o ID para um número inteiro
 
-        if not isinstance(
-            id_registro, int
-        ):  # Verifica se o ID fornecido é do tipo inteiro
+        if not isinstance(id_registro, int):
             raise TypeError("O ID deve ser um número inteiro")
 
         registro_encontrado = None  # Procura o registro com o ID fornecido
@@ -262,14 +289,12 @@ def deletar_registro(id_registro):
                 registro_encontrado = registro
                 break
 
-        if (
-            registro_encontrado
-        ):  # Se o registro foi encontrado, remove-o da lista de registros
+        if registro_encontrado:
             registros.remove(registro_encontrado)
             print(f"Registro com ID {id_registro} removido com sucesso.")
         else:
             print(
-                f"Nenhum registro encontrado com o ID {id_registro}.Verifique o ID e tente novamente."
+                f"Nenhum registro encontrado com o ID {id_registro}. Verifique o ID e tente novamente."
             )
 
     except ValueError:
@@ -494,12 +519,19 @@ try:
             if novo_valor != "":
                 try:
                     novo_valor = float(novo_valor)
-                except:
-                    while not isinstance(novo_valor, float):
-                        print("Valor não é um float. digite novamente")
+                except ValueError:
+                    print("Erro: Valor inválido. Tente novamente.")
+                    while True:
                         novo_valor = obter_input(
                             "Novo valor [Deixe em branco para não alterar]: "
                         )
+                        if novo_valor == "":
+                            break
+                        try:
+                            novo_valor = float(novo_valor)
+                            break
+                        except ValueError:
+                            print("Erro: Valor inválido. Tente novamente.")
 
             novo_tipo = obter_input("Novo tipo [Deixe em branco para não alterar]: ")
 
@@ -523,7 +555,9 @@ try:
                 except:
                     print("Erro: Data inválida. Tente novamente.")
                     while True:
-                        nova_data = obter_input("Data (DD/MM/AAAA): ")
+                        nova_data = obter_input(
+                            "Nova data [Deixe em branco para não alterar]: "
+                        )
                         try:
                             data_formatada = datetime.strptime(
                                 nova_data, "%d/%m/%Y"
