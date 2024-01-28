@@ -331,12 +331,6 @@ def ler_registros(filtro: dict = None) -> list:
             menor_que = float(filtro["menor_que"])
             maior_que = float(filtro["maior_que"])
 
-            # if menor_que > maior_que:
-            #     print(
-            #         "Erro: Valor 'menor que' não pode ser maior que valor 'maior que'."
-            #     )
-            #     return []
-
             registros_filtrados = list(
                 filter(
                     lambda x: maior_que <= abs(x["valor"]) <= menor_que,
