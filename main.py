@@ -35,12 +35,70 @@ def json_to_table(json_data):
 
 def agrupar_por_tipo(campo="tipo"):
     resultado = {}
+    # soma de receitas, despesas e investimentos
     for registro in registros:
         chave = registro[campo]
         if chave not in resultado:
             resultado[chave] = 0
         resultado[chave] += registro["valor"]
-    return resultado
+
+    table = PrettyTable()
+
+    table.field_names = ["Tipo", "Valor"]
+
+    for tipo in resultado:
+        table.add_row([tipo, resultado[tipo]])
+
+    return table
+
+
+def agrupar_por_mes(campo="mes"):
+    resultado = {}
+
+    # receita, despesa, investimento e saldo por mes
+    for registro in registros:
+        chave = registro["data"][campo]
+        if chave not in resultado:
+            resultado[chave] = {
+                "receita": 0,
+                "despesa": 0,
+                "investimento": 0,
+                "juros": 0,
+                "saldo": 0,
+            }
+        if registro["tipo"] == "receita":
+            resultado[chave]["receita"] += registro["valor"]
+        elif registro["tipo"] == "despesa":
+            resultado[chave]["despesa"] += registro["valor"]
+        elif registro["tipo"] == "investimento":
+            resultado[chave]["investimento"] += registro["valor"]
+            resultado[chave]["juros"] += registro["montante"] - registro["valor"]
+
+        resultado[chave]["saldo"] = (
+            resultado[chave]["receita"]
+            + resultado[chave]["despesa"]
+            + resultado[chave]["investimento"]
+            + resultado[chave]["juros"]
+        )
+
+    # print table
+    table = PrettyTable()
+
+    table.field_names = ["Mês", "Receita", "Despesa", "Investimento", "Juros", "Saldo"]
+
+    for mes in resultado:
+        table.add_row(
+            [
+                mes,
+                resultado[mes]["receita"],
+                resultado[mes]["despesa"],
+                resultado[mes]["investimento"],
+                resultado[mes]["juros"],
+                resultado[mes]["saldo"],
+            ]
+        )
+
+    return table
 
 
 # Função para obter input seguro
@@ -234,10 +292,8 @@ def ler_registros(filtro: dict = None) -> list:
     Returns:
         list: Registros filtrados pelo filtro.
     """
-
-    registros_filtrados = registros[
-        ::
-    ]  # Assuming registros is defined somewhere in your code
+    atualizar_rendimento()
+    registros_filtrados = registros[:]
 
     try:
         if filtro["dia"] or filtro["mes"] or filtro["ano"]:
@@ -275,15 +331,16 @@ def ler_registros(filtro: dict = None) -> list:
             menor_que = float(filtro["menor_que"])
             maior_que = float(filtro["maior_que"])
 
-            if menor_que > maior_que:
-                print(
-                    "Erro: Valor 'menor que' não pode ser maior que valor 'maior que'."
-                )
-                return []
+            # if menor_que > maior_que:
+            #     print(
+            #         "Erro: Valor 'menor que' não pode ser maior que valor 'maior que'."
+            #     )
+            #     return []
 
             registros_filtrados = list(
                 filter(
-                    lambda x: menor_que <= x["valor"] <= maior_que, registros_filtrados
+                    lambda x: maior_que <= abs(x["valor"]) <= menor_que,
+                    registros_filtrados,
                 )
             )
         elif filtro["menor_que"]:
@@ -322,183 +379,198 @@ def total_por_tipo():
 
 continuar = True
 
-while continuar:
-    print("-" * 100)
-    print("\nSistema Financeiro - FinanciADA")
-    print(f"Saldo: {obter_saldo()}")
-    print("\nOpções:")
-    print("1. Criar Registro")
-    print("2. Ler Registros")
-    print("3. Atualizar Registro")
-    print("4. Deletar Registro")
-    print("5. Atualizar Rendimento")
-    print("6. Exportar Relatório")
-    print("7. Agrupar por tipo")
-    print("8. Encerrar")
+try:
+    while continuar:
+        print("-" * 100)
+        print("\nSistema Financeiro - FinanciADA")
+        print(f"Saldo: {obter_saldo()}")
+        print("\nOpções:")
+        print("1. Criar Registro")
+        print("2. Ler Registros")
+        print("3. Atualizar Registro")
+        print("4. Deletar Registro")
+        print("5. Atualizar Rendimento")
+        print("6. Exportar Relatório")
+        print("7. Agrupar por")
+        print("8. Encerrar")
 
-    escolha = obter_input("Escolha a opção (1-8): ")
+        escolha = obter_input("Escolha a opção (1-8): ")
 
-    if escolha == "1":
-        tipo = obter_input(
-            "Informe o tipo de movimentação: (receita/despesa/investimento) "
-        )
-        if tipo not in ["receita", "despesa", "investimento"]:
-            print("Erro: Tipo inválido. Tente novamente.")
-            while True:
-                tipo = obter_input(
-                    "Informe o tipo de movimentação: (receita/despesa/investimento) "
-                )
-                if tipo in ["receita", "despesa", "investimento"]:
-                    break
-                else:
-                    print("Erro: Tipo inválido. Tente novamente.")
-
-        valor = obter_input("Informe o valor da movimentação: ")
-        try:
-            valor = float(valor)
-        except:
-            print("Erro: Valor inválido. Tente novamente.")
-            while True:
-                valor = obter_input("Informe o valor da movimentação: ")
-                try:
-                    valor = float(valor)
-                    break
-                except:
-                    print("Erro: Valor inválido. Tente novamente.")
-
-        data_movimentacao = obter_input(
-            "Informe a data da movimentação no formato DD/MM/AAAA: "
-        )
-
-        try:
-            data_formatada = datetime.strptime(data_movimentacao, "%d/%m/%Y")
-        except:
-            print("Erro: Data inválida. Tente novamente.")
-            while True:
-                data_movimentacao = obter_input(
-                    "Informe a data da movimentação no formato DD/MM/AAAA: "
-                )
-                try:
-                    data_formatada = datetime.strptime(data_movimentacao, "%d/%m/%Y")
-                    break
-                except:
-                    print("Erro: Data inválida. Tente novamente.")
-
-        criar_registro(tipo, valor, data_formatada)
-
-    if escolha == "2":
-        filtro = {
-            "dia": "",
-            "mes": "",
-            "ano": "",
-            "tipo": "",
-            "menor_que": "",
-            "maior_que": "",
-        }
-        # filtro = obter_input("Filtrar por campo (data/tipo/valor) - deixe em branco para nenhum): ")
-        data_filtro = obter_input("Filtrar por data? [s/n]: ")
-        if data_filtro.lower() == "s":
-            data_filtro_dia = input("Informe o dia [deixe em branco para todos]: ")
-            data_filtro_mes = input("Informe o mês [deixe em branco para todos]: ")
-            data_filtro_ano = input("Informe o ano [deixe em branco para todos]: ")
-
-            if data_filtro_dia != "":
-                data_filtro_dia = int(data_filtro_dia)
-                filtro["dia"] = data_filtro_dia
-
-            if data_filtro_mes != "":
-                data_filtro_mes = int(data_filtro_mes)
-                filtro["mes"] = data_filtro_mes
-
-            if data_filtro_ano != "":
-                data_filtro_ano = int(data_filtro_ano)
-                filtro["ano"] = data_filtro_ano
-
-        tipo_filtro = obter_input("Filtrar por tipo? [s/n]: ")
-        if tipo_filtro.lower() == "s":
-            valor_filtro = obter_input("Valor do filtro: ")
-            filtro["tipo"] = valor_filtro
-
-        valor_filtro = obter_input("Filtrar por valor? [s/n]: ")
-        if valor_filtro.lower() == "s":
-            menor_que = obter_input("Menor que (deixe em branco para nenhum): ")
-            maior_que = obter_input("Maior que (deixe em branco para nenhum): ")
-            filtro["menor_que"] = menor_que
-            filtro["maior_que"] = maior_que
-
-        print(ler_registros(filtro))
-
-    if escolha == "3":
-        id_registro = obter_input("ID do registro a ser atualizado: ")
-
-        try:
-            id_registro = int(id_registro)
-
-        except:
-            while not isinstance(id_registro, int):
-                print("ID não é um inteiro. digite novamente")
-                id_registro = obter_input("ID do registro a ser atualizado: ")
-
-        novo_valor = obter_input("Novo valor [Deixe em branco para não alterar]: ")
-
-        if novo_valor != "":
-            try:
-                novo_valor = float(novo_valor)
-            except:
-                while not isinstance(novo_valor, float):
-                    print("Valor não é um float. digite novamente")
-                    novo_valor = obter_input(
-                        "Novo valor [Deixe em branco para não alterar]: "
-                    )
-
-        novo_tipo = obter_input("Novo tipo [Deixe em branco para não alterar]: ")
-
-        if novo_tipo != "":
-            if novo_tipo not in ["receita", "despesa", "investimento"]:
+        if escolha == "1":
+            tipo = obter_input(
+                "Informe o tipo de movimentação: (receita/despesa/investimento) "
+            )
+            if tipo not in ["receita", "despesa", "investimento"]:
                 print("Erro: Tipo inválido. Tente novamente.")
                 while True:
-                    novo_tipo = obter_input(
-                        "Informe o novo tipo de movimentação: (receita/despesa/investimento) "
+                    tipo = obter_input(
+                        "Informe o tipo de movimentação: (receita/despesa/investimento) "
                     )
-                    if novo_tipo in ["receita", "despesa", "investimento"]:
+                    if tipo in ["receita", "despesa", "investimento"]:
                         break
                     else:
                         print("Erro: Tipo inválido. Tente novamente.")
 
-        nova_data = obter_input("Nova data [Deixe em branco para não alterar]: ")
-        data_formatada = ""
-        if nova_data != "":
+            valor = obter_input("Informe o valor da movimentação: ")
             try:
-                data_formatada = datetime.strptime(nova_data, "%d/%m/%Y").date()
+                valor = float(valor)
+            except:
+                print("Erro: Valor inválido. Tente novamente.")
+                while True:
+                    valor = obter_input("Informe o valor da movimentação: ")
+                    try:
+                        valor = float(valor)
+                        break
+                    except:
+                        print("Erro: Valor inválido. Tente novamente.")
+
+            data_movimentacao = obter_input(
+                "Informe a data da movimentação no formato DD/MM/AAAA: "
+            )
+
+            try:
+                data_formatada = datetime.strptime(data_movimentacao, "%d/%m/%Y")
             except:
                 print("Erro: Data inválida. Tente novamente.")
                 while True:
-                    nova_data = obter_input("Data (DD/MM/AAAA): ")
+                    data_movimentacao = obter_input(
+                        "Informe a data da movimentação no formato DD/MM/AAAA: "
+                    )
                     try:
-                        data_formatada = datetime.strptime(nova_data, "%d/%m/%Y").date()
+                        data_formatada = datetime.strptime(
+                            data_movimentacao, "%d/%m/%Y"
+                        )
                         break
                     except:
                         print("Erro: Data inválida. Tente novamente.")
 
-        atualizar_registro(
-            id_registro,
-            novo_tipo=novo_tipo,
-            novo_valor=novo_valor,
-            nova_data=data_formatada,
-        )
+            criar_registro(tipo, valor, data_formatada)
 
-    if escolha == "4":
-        id_registro = obter_input("Informe o ID do registro: ")
-        deletar_registro(id_registro)
+        if escolha == "2":
+            filtro = {
+                "dia": "",
+                "mes": "",
+                "ano": "",
+                "tipo": "",
+                "menor_que": "",
+                "maior_que": "",
+            }
+            # filtro = obter_input("Filtrar por campo (data/tipo/valor) - deixe em branco para nenhum): ")
+            data_filtro = obter_input("Filtrar por data? [s/n]: ")
+            if data_filtro.lower() == "s":
+                data_filtro_dia = input("Informe o dia [deixe em branco para todos]: ")
+                data_filtro_mes = input("Informe o mês [deixe em branco para todos]: ")
+                data_filtro_ano = input("Informe o ano [deixe em branco para todos]: ")
 
-    if escolha == "6":
-        atualizar_rendimento()
-        exportar_relatorio()
+                if data_filtro_dia != "":
+                    data_filtro_dia = int(data_filtro_dia)
+                    filtro["dia"] = data_filtro_dia
 
-    if escolha == "7":
-        total_por_tipo()
-    if escolha == "8":
-        atualizar_rendimento()
-        exportar_relatorio()
-        print("Obrigado por escolher o nosso sistema! Volte Sempre!")
-        continuar = False
+                if data_filtro_mes != "":
+                    data_filtro_mes = int(data_filtro_mes)
+                    filtro["mes"] = data_filtro_mes
+
+                if data_filtro_ano != "":
+                    data_filtro_ano = int(data_filtro_ano)
+                    filtro["ano"] = data_filtro_ano
+
+            tipo_filtro = obter_input("Filtrar por tipo? [s/n]: ")
+            if tipo_filtro.lower() == "s":
+                valor_filtro = obter_input("Valor do filtro: ")
+                filtro["tipo"] = valor_filtro
+
+            valor_filtro = obter_input("Filtrar por valor? [s/n]: ")
+            if valor_filtro.lower() == "s":
+                menor_que = obter_input("Menor que (deixe em branco para nenhum): ")
+                maior_que = obter_input("Maior que (deixe em branco para nenhum): ")
+                filtro["menor_que"] = menor_que
+                filtro["maior_que"] = maior_que
+
+            print(ler_registros(filtro))
+
+        if escolha == "3":
+            id_registro = obter_input("ID do registro a ser atualizado: ")
+
+            try:
+                id_registro = int(id_registro)
+
+            except:
+                while not isinstance(id_registro, int):
+                    print("ID não é um inteiro. digite novamente")
+                    id_registro = obter_input("ID do registro a ser atualizado: ")
+
+            novo_valor = obter_input("Novo valor [Deixe em branco para não alterar]: ")
+
+            if novo_valor != "":
+                try:
+                    novo_valor = float(novo_valor)
+                except:
+                    while not isinstance(novo_valor, float):
+                        print("Valor não é um float. digite novamente")
+                        novo_valor = obter_input(
+                            "Novo valor [Deixe em branco para não alterar]: "
+                        )
+
+            novo_tipo = obter_input("Novo tipo [Deixe em branco para não alterar]: ")
+
+            if novo_tipo != "":
+                if novo_tipo not in ["receita", "despesa", "investimento"]:
+                    print("Erro: Tipo inválido. Tente novamente.")
+                    while True:
+                        novo_tipo = obter_input(
+                            "Informe o novo tipo de movimentação: (receita/despesa/investimento) "
+                        )
+                        if novo_tipo in ["receita", "despesa", "investimento"]:
+                            break
+                        else:
+                            print("Erro: Tipo inválido. Tente novamente.")
+
+            nova_data = obter_input("Nova data [Deixe em branco para não alterar]: ")
+            data_formatada = ""
+            if nova_data != "":
+                try:
+                    data_formatada = datetime.strptime(nova_data, "%d/%m/%Y").date()
+                except:
+                    print("Erro: Data inválida. Tente novamente.")
+                    while True:
+                        nova_data = obter_input("Data (DD/MM/AAAA): ")
+                        try:
+                            data_formatada = datetime.strptime(
+                                nova_data, "%d/%m/%Y"
+                            ).date()
+                            break
+                        except:
+                            print("Erro: Data inválida. Tente novamente.")
+
+            atualizar_registro(
+                id_registro,
+                novo_tipo=novo_tipo,
+                novo_valor=novo_valor,
+                nova_data=data_formatada,
+            )
+
+        if escolha == "4":
+            id_registro = obter_input("Informe o ID do registro: ")
+            deletar_registro(id_registro)
+
+        if escolha == "6":
+            atualizar_rendimento()
+            exportar_relatorio()
+
+        if escolha == "7":
+            campo = obter_input("Agrupar por campo (tipo/mes): ")
+            if campo == "tipo":
+                print(agrupar_por_tipo())
+            elif campo == "mes":
+                print(agrupar_por_mes())
+            else:
+                print("Erro: Campo inválido. Tente novamente.")
+        if escolha == "8":
+            atualizar_rendimento()
+            exportar_relatorio()
+            continuar = False
+
+finally:
+    atualizar_rendimento()
+    exportar_relatorio()
+    print("Obrigado por escolher o nosso sistema! Volte Sempre!")
