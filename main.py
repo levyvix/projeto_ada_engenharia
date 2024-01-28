@@ -7,7 +7,7 @@ try:
     with open("registros.json", "r") as arquivo_json:
         registros = json.load(arquivo_json)
     contador_id = registros[-1].get("id", 0) + 1
-except:
+except FileNotFoundError:
     registros = []
     contador_id = 0
 
@@ -119,11 +119,7 @@ def obter_saldo():
     # atualizar_rendimento()
     saldo = 0
     for registro in registros:
-        saldo += registro["valor"]
-        try:
-            saldo += registro["montante"]
-        except:
-            pass
+        saldo += registro["valor"] + registro.get("montante", 0)
     return saldo
 
 
@@ -219,14 +215,14 @@ def criar_registro(tipo, valor, data):
 
         try:
             taxa_juros = float(taxa_juros)
-        except:
+        except ValueError:
             print("Erro: Taxa de juros inválida. Tente novamente.")
             while True:
                 taxa_juros = obter_input("Informe a taxa de juros: ")
                 try:
                     taxa_juros = float(taxa_juros)
                     break
-                except:
+                except ValueError:
                     print("Erro: Taxa de juros inválida. Tente novamente.")
 
         tempo_dias = (datetime.now() - data).days
@@ -408,14 +404,14 @@ try:
             valor = obter_input("Informe o valor da movimentação: ")
             try:
                 valor = float(valor)
-            except:
+            except ValueError:
                 print("Erro: Valor inválido. Tente novamente.")
                 while True:
                     valor = obter_input("Informe o valor da movimentação: ")
                     try:
                         valor = float(valor)
                         break
-                    except:
+                    except ValueError:
                         print("Erro: Valor inválido. Tente novamente.")
 
             data_movimentacao = obter_input(
@@ -488,7 +484,7 @@ try:
             try:
                 id_registro = int(id_registro)
 
-            except:
+            except ValueError:
                 while not isinstance(id_registro, int):
                     print("ID não é um inteiro. digite novamente")
                     id_registro = obter_input("ID do registro a ser atualizado: ")
